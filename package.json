@@ -1,0 +1,48 @@
+{
+  "name": "project",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.7",
+    "base64-arraybuffer": "^1.0.2",
+    "dompurify": "^3.0.9",
+    "framer-motion": "^11.0.8",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.1",
+    "lamejs": "^1.2.1",
+    "lucide-react": "^0.358.0",
+    "marked": "^12.0.1",
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^4.10.38",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-lite-youtube-embed": "^2.4.0",
+    "react-media-recorder": "^1.6.6",
+    "react-router-dom": "^6.22.3",
+    "tesseract.js": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.28",
+    "@types/react": "^18.2.64",
+    "@types/react-dom": "^18.2.21",
+    "@typescript-eslint/eslint-plugin": "^7.1.1",
+    "@typescript-eslint/parser": "^7.1.1",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.18",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.1.6",
+    "vite-plugin-static-copy": "^3.0.0"
+  }
+}
