@@ -11,12 +11,17 @@ if (!root) {
   throw new Error('Root element not found');
 }
 
+// Conditional StrictMode - disabled in development for stagewise compatibility
+const AppWithProviders = (
+  <Router>
+    <LanguageProvider>
+      <App />
+    </LanguageProvider>
+  </Router>
+);
+
 createRoot(root).render(
-  <React.StrictMode>
-    <Router>
-      <LanguageProvider>
-        <App />
-      </LanguageProvider>
-    </Router>
-  </React.StrictMode>
+  process.env.NODE_ENV === 'development' ? 
+    AppWithProviders : 
+    <React.StrictMode>{AppWithProviders}</React.StrictMode>
 );

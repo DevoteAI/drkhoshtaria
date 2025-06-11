@@ -314,7 +314,7 @@ export function AskDoctor() {
   };
 
   return (
-    <div className="min-h-screen bg-dark-900 pt-16 flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-dark-900 pt-16 pb-8" data-medical-component="ask-doctor-page">
       {/* Neon Effect */}
       <div className="absolute top-0 inset-x-0 h-[2px] bg-cyan-400 shadow-[0_0_15px_5px_rgba(34,211,238,0.5)] z-50" />
       <motion.div
@@ -369,21 +369,50 @@ export function AskDoctor() {
 
         {/* Question Form */}
         <div className="flex-1 overflow-hidden pb-8 pt-8">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            {submitted ? (
-              <div className="bg-cyan-900/20 border border-cyan-400/30 rounded-xl p-6 text-center animate-fadeSlideUp">
-                <h3 className="text-cyan-300 font-semibold mb-2">{t('aiChat.askDoctor.success.title')}</h3>
-                <p className="text-dark-100">{t('aiChat.askDoctor.success.message')}</p>
-                <button
-                  onClick={() => setSubmitted(false)}
-                  className="mt-4 text-cyan-400 hover:text-cyan-300 transition-colors"
-                >
-                  {t('aiChat.askDoctor.success.askAnother')}
-                </button>
-              </div>
-            ) : (
-              <>
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            {!submitted ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-dark-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-dark-700/30 p-8 medical-form"
+                data-medical-component="question-form"
+              >
                 <form onSubmit={handleQuestionSubmit} className="space-y-6">
+                  {/* Patient Information Section */}
+                  <div className="grid md:grid-cols-2 gap-6" data-medical-component="patient-info">
+                    <div>
+                      <label htmlFor="name" className="block text-sm font-medium text-dark-100 mb-2">
+                        {t('askDoctor.form.namePlaceholder')}
+                      </label>
+                      <input
+                        type="text"
+                        id="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600 rounded-xl text-white placeholder-dark-300 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+                        placeholder={t('askDoctor.form.namePlaceholder')}
+                        required
+                        data-medical-component="patient-name-input"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="email" className="block text-sm font-medium text-dark-100 mb-2">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        id="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600 rounded-xl text-white placeholder-dark-300 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+                        placeholder={t('askDoctor.form.emailPlaceholder')}
+                        required
+                        data-medical-component="patient-email-input"
+                      />
+                    </div>
+                  </div>
+
                   {error && (
                     <div className="bg-red-900/20 border border-red-400/30 rounded-xl p-4 text-red-300">
                       {error}
@@ -393,32 +422,6 @@ export function AskDoctor() {
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <User className="h-5 w-5 text-cyan-400/50" />
-                      </div>
-                      <input
-                        type="text"
-                        required
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder={t('aiChat.askDoctor.namePlaceholder')}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-dark-700/50 backdrop-blur-sm border border-dark-600/30 text-white placeholder-dark-300 focus:ring-2 focus:ring-cyan-400/30 focus:border-transparent transition-all duration-300"
-                      />
-                    </div>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Mail className="h-5 w-5 text-cyan-400/50" />
-                      </div>
-                      <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder={t('aiChat.askDoctor.emailPlaceholder')}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-dark-700/50 backdrop-blur-sm border border-dark-600/30 text-white placeholder-dark-300 focus:ring-2 focus:ring-cyan-400/30 focus:border-transparent transition-all duration-300"
-                      />
-                    </div>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Phone className="h-5 w-5 text-cyan-400/50" />
                       </div>
                       <input
                         type="tel"
@@ -631,7 +634,18 @@ export function AskDoctor() {
                     setVoiceDuration(null);
                   }}
                 />
-              </>
+              </motion.div>
+            ) : (
+              <div className="bg-cyan-900/20 border border-cyan-400/30 rounded-xl p-6 text-center animate-fadeSlideUp">
+                <h3 className="text-cyan-300 font-semibold mb-2">{t('aiChat.askDoctor.success.title')}</h3>
+                <p className="text-dark-100">{t('aiChat.askDoctor.success.message')}</p>
+                <button
+                  onClick={() => setSubmitted(false)}
+                  className="mt-4 text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  {t('aiChat.askDoctor.success.askAnother')}
+                </button>
+              </div>
             )}
           </div>
         </div>

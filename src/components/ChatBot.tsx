@@ -402,7 +402,7 @@ export function ChatBot({ embedded = false }: ChatBotProps) {
         isDarkMode 
           ? 'bg-dark-900/95 border border-dark-700/50' 
           : 'bg-white/95 border border-gray-200/50'
-      } transition-all duration-300 h-[600px] flex flex-col`
+      } transition-all duration-300 h-[750px] flex flex-col`
     : `fixed bottom-4 right-4 z-50 w-96 max-w-[calc(100vw-2rem)] shadow-2xl rounded-2xl overflow-hidden backdrop-blur-md ${
         isDarkMode 
           ? 'bg-dark-900/95 border border-dark-700/50' 
@@ -418,8 +418,8 @@ export function ChatBot({ embedded = false }: ChatBotProps) {
       {/* Header - Fixed height */}
       <div className={`relative p-4 cursor-pointer flex-shrink-0 ${
         isDarkMode 
-          ? 'bg-gradient-to-r from-brand-600 to-brand-500' 
-          : 'bg-gradient-to-r from-brand-500 to-brand-400'
+          ? 'bg-gradient-to-r from-cyan-600 to-cyan-500 shadow-[0_0_20px_rgba(34,211,238,0.6)]' 
+          : 'bg-gradient-to-r from-cyan-500 to-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]'
       } transition-all`} onClick={toggleChatExpansion}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -637,7 +637,7 @@ export function ChatBot({ embedded = false }: ChatBotProps) {
                     {message.type === 'bot' && (
                       <div className="flex-shrink-0 mr-2">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          isDarkMode ? 'bg-brand-600' : 'bg-brand-500'
+                          isDarkMode ? 'bg-cyan-600' : 'bg-cyan-500'
                         }`}>
                           <Bot className="w-5 h-5 text-white" />
                         </div>
@@ -715,7 +715,7 @@ export function ChatBot({ embedded = false }: ChatBotProps) {
                 <div className="flex justify-start group">
                   <div className="flex-shrink-0 mr-2">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      isDarkMode ? 'bg-brand-600' : 'bg-brand-500'
+                      isDarkMode ? 'bg-cyan-600' : 'bg-cyan-500'
                     }`}>
                       <Bot className="w-5 h-5 text-white" />
                     </div>

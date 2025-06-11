@@ -12,6 +12,8 @@ import { ChatHistory } from './pages/ChatHistory';
 import { Education } from './pages/Education';
 import { useLanguage } from './contexts/LanguageContext';
 import { useLocation } from 'react-router-dom';
+// 🎨 Stagewise Toolbar Integration - Visual vibe coding
+import { initToolbar } from '@stagewise/toolbar';
 
 function Stat({ icon: Icon, number, text }: { icon: React.ElementType; number: string; text: string }) {
   return (
@@ -329,6 +331,61 @@ function Home() {
 }
 
 function App() {
+  // 🚀 Initialize stagewise toolbar for development
+  useEffect(() => {
+    // Only initialize in development mode and prevent double initialization
+    if (process.env.NODE_ENV === 'development') {
+      // Check if stagewise is already initialized to prevent double initialization in React StrictMode
+      const existingAnchor = document.querySelector('[data-stagewise-anchor]');
+      if (existingAnchor) {
+        console.log('🎨 Stagewise toolbar already initialized, skipping...');
+        return;
+      }
+
+      // Enhanced configuration for medical platform
+      const stagewiseConfig = {
+        plugins: [],
+        projectName: 'Dr. Khoshtaria Medical Platform',
+        theme: 'dark',
+        componentDetection: {
+          reactComponents: true,
+          customSelectors: [
+            '[data-medical-component]',
+            '.medical-form',
+            '.patient-info', 
+            '.chat-interface',
+            '.file-upload',
+            '.admin-panel',
+            '.education-content'
+          ]
+        },
+        contextEnhancement: {
+          includeMedicalContext: true,
+          includeFormStates: true,
+          includeA11yAttributes: true
+        },
+        screenshot: {
+          quality: 0.9,
+          format: 'png',
+          scale: 2
+        }
+      };
+      
+      try {
+        initToolbar(stagewiseConfig);
+        console.log('🎨 Stagewise toolbar initialized - Visual vibe coding enabled!');
+        console.log('📋 Medical platform features: Form states, A11y attributes, High-res screenshots');
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('companion anchor already exists')) {
+          console.log('🎨 Stagewise toolbar already exists, continuing...');
+        } else {
+          console.error('❌ Stagewise initialization error:', error);
+        }
+      }
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-dark-900 text-white pt-16">
       <Header />
