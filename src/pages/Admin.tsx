@@ -156,11 +156,201 @@ export function Admin() {
     }
   };
 
+  // Convert markdown to HTML and create professional email template (same as ChatBot)
+  const createEmailHTML = (emailData: {
+    patientName: string;
+    patientEmail: string;
+    patientPhone: string;
+    originalQuestion: string;
+    editedResponse: string;
+  }) => {
+    // Convert markdown to HTML
+    const responseHTML = DOMPurify.sanitize(marked(emailData.editedResponse) as string);
+    
+    return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Medical Response - Dr. Khoshtaria</title>
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f8f9fa;
+            }
+            .header {
+                background: linear-gradient(135deg, #0891b2, #06b6d4);
+                color: white;
+                padding: 30px;
+                text-align: center;
+                border-radius: 10px 10px 0 0;
+                margin-bottom: 0;
+            }
+            .header h1 {
+                margin: 0;
+                font-size: 28px;
+                font-weight: 600;
+            }
+            .header p {
+                margin: 5px 0 0 0;
+                opacity: 0.9;
+                font-size: 16px;
+            }
+            .content {
+                background: white;
+                padding: 30px;
+                border-radius: 0 0 10px 10px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            .patient-info {
+                background: #f1f5f9;
+                padding: 20px;
+                border-radius: 8px;
+                margin-bottom: 25px;
+                border-left: 4px solid #0891b2;
+            }
+            .patient-info h3 {
+                margin: 0 0 10px 0;
+                color: #0891b2;
+                font-size: 18px;
+            }
+            .info-row {
+                margin: 8px 0;
+                font-size: 14px;
+            }
+            .info-label {
+                font-weight: 600;
+                color: #64748b;
+            }
+            .section {
+                margin: 25px 0;
+            }
+            .section h3 {
+                color: #0891b2;
+                font-size: 18px;
+                margin-bottom: 15px;
+                padding-bottom: 8px;
+                border-bottom: 2px solid #e2e8f0;
+            }
+            .question-box {
+                background: #fefefe;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 20px;
+                margin: 15px 0;
+                font-style: italic;
+                color: #475569;
+            }
+            .response-box {
+                background: #fefefe;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 20px;
+                margin: 15px 0;
+            }
+            .response-box ul, .response-box ol {
+                margin: 10px 0;
+                padding-left: 20px;
+            }
+            .response-box li {
+                margin: 5px 0;
+            }
+            .response-box strong {
+                color: #0891b2;
+            }
+            .footer {
+                text-align: center;
+                margin-top: 30px;
+                padding: 20px;
+                background: #f8fafc;
+                border-radius: 8px;
+                font-size: 14px;
+                color: #64748b;
+            }
+            .footer strong {
+                color: #0891b2;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Dr. Khoshtaria Medical Platform</h1>
+            <p>Professional Medical Consultation Response</p>
+        </div>
+        
+        <div class="content">
+            <div class="patient-info">
+                <h3>Patient Information</h3>
+                <div class="info-row">
+                    <span class="info-label">Name:</span> ${emailData.patientName || 'Not provided'}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email:</span> ${emailData.patientEmail || 'Not provided'}
+                </div>
+                ${emailData.patientPhone ? `
+                <div class="info-row">
+                    <span class="info-label">Phone:</span> ${emailData.patientPhone}
+                </div>
+                ` : ''}
+                <div class="info-row">
+                    <span class="info-label">Date:</span> ${new Date().toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })}
+                </div>
+            </div>
+
+            ${emailData.originalQuestion ? `
+            <div class="section">
+                <h3>Your Question</h3>
+                <div class="question-box">
+                    ${emailData.originalQuestion}
+                </div>
+            </div>
+            ` : ''}
+
+            <div class="section">
+                <h3>Medical Response</h3>
+                <div class="response-box">
+                    ${responseHTML}
+                </div>
+            </div>
+
+        </div>
+
+        <div class="footer">
+            <strong>Dr. Khoshtaria Medical Platform</strong><br>
+            Professional Healthcare Consultation Services<br>
+            <em>This email was generated on ${new Date().toLocaleDateString()}</em>
+        </div>
+    </body>
+    </html>
+    `;
+  };
+
   const handleSendResponse = async (questionId: string, response: string) => {
     try {
       // Send response to webhook
       const question = questions.find(q => q.id === questionId);
       if (!question) throw new Error('Question not found');
+
+      // Create formatted HTML email (same as ChatBot)
+      const htmlContent = createEmailHTML({
+        patientName: question.name,
+        patientEmail: question.email,
+        patientPhone: question.phone || '',
+        originalQuestion: question.question,
+        editedResponse: response
+      });
 
       await fetch(WEBHOOK_URL, {
         method: 'POST',
@@ -172,8 +362,9 @@ export function Admin() {
           email: question.email,
           phone: question.phone,
           question: question.question,
-          response: response,
-          ai_response: question.ai_response
+          response: htmlContent, // Send HTML instead of plain text
+          ai_response: question.ai_response,
+          isHTML: true // Flag to indicate HTML content
         }),
       });
 

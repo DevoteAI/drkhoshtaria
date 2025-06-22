@@ -43,21 +43,21 @@ export function ResponseForm({ question, onClose, onSubmit }: ResponseFormProps)
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-dark-800 rounded-xl shadow-xl w-full max-w-2xl border border-dark-700/30 my-8">
-        <div className="p-6 border-b border-dark-700/30">
+      <div className="bg-dark-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] border border-dark-700/30 my-8 flex flex-col">
+        <div className="p-6 border-b border-dark-700/30 flex-shrink-0">
           <h3 className="text-xl font-semibold text-white">Respond to Patient</h3>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 flex-1 overflow-y-auto">
           <div className="space-y-2">
             <label className="block text-sm font-medium text-dark-200">Patient Question:</label>
-            <div className="bg-dark-700/50 rounded-lg p-4 text-white">{question.question}</div>
+            <div className="bg-dark-700/50 rounded-lg p-4 text-white max-h-32 overflow-y-auto">{question.question}</div>
             {question.ai_response && (
               <div className="mt-4">
                 <label className="block text-sm font-medium text-dark-200">AI Generated Response:</label>
                 <div 
-                  className="bg-dark-700/50 rounded-lg p-4 prose prose-invert max-w-none markdown-content"
+                  className="bg-dark-700/50 rounded-lg p-4 prose prose-invert max-w-none markdown-content max-h-40 overflow-y-auto"
                   dangerouslySetInnerHTML={{ 
-                    __html: DOMPurify.sanitize(marked(question.ai_response))
+                    __html: DOMPurify.sanitize(marked(question.ai_response) as string)
                   }}
                 />
               </div>
@@ -70,12 +70,12 @@ export function ResponseForm({ question, onClose, onSubmit }: ResponseFormProps)
               rows={8}
               value={response}
               onChange={(e) => setResponse(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-dark-700/50 border border-dark-600/30 text-white placeholder-dark-300 focus:ring-2 focus:ring-cyan-400/30 focus:border-transparent transition-all duration-300"
+              className="w-full px-4 py-3 rounded-lg bg-dark-700/50 border border-dark-600/30 text-white placeholder-dark-300 focus:ring-2 focus:ring-cyan-400/30 focus:border-transparent transition-all duration-300 resize-none"
               placeholder="Edit or write your response here..."
               required
             />
           </div>
-          <div className="flex justify-end space-x-4 pt-4">
+          <div className="flex justify-end space-x-4 pt-4 flex-shrink-0">
             <button
               type="button"
               onClick={handleGeneratePDF}

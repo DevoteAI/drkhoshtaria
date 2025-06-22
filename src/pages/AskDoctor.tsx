@@ -266,76 +266,166 @@ export function AskDoctor() {
 
       // Upload attachments if any (store original files for doctor review)
       if (attachments.length > 0) {
-        for (const attachment of attachments) {
+        let successfulUploads = 0;
+        let failedUploads = 0;
+        const uploadResults = [];
+
+        for (const [index, attachment] of attachments.entries()) {
           const { file } = attachment;
           
-          // Generate safe filename for Georgian/Unicode characters
-          // Replace problematic characters and encode filename properly
-          const safeFileName = file.name
-            .replace(/[^\w\-_.]/g, '_') // Replace any non-alphanumeric characters except dash, underscore, and dot
-            .replace(/_{2,}/g, '_')     // Replace multiple underscores with single underscore
-            .replace(/^_+|_+$/g, '');  // Remove leading/trailing underscores
-          
-          // Add file extension back if it was lost
-          const originalExtension = file.name.split('.').pop();
-          const finalFileName = safeFileName.includes('.') ? safeFileName : `${safeFileName}.${originalExtension}`;
-          
-          const filePath = `${questionId}/${finalFileName}`;
-          
-          console.log('📁 Uploading file with safe filename:', {
-            originalName: file.name,
-            safeName: finalFileName,
-            filePath: filePath
-          });
-          
-          // Upload file to storage - using arrayBuffer instead of direct file upload
-          const arrayBuffer = await file.arrayBuffer();
-          const fileBuffer = new Uint8Array(arrayBuffer);
-          
-          const { error: uploadError } = await supabase.storage
-            .from('question-attachments')
-            .upload(filePath, fileBuffer, {
-              contentType: file.type, // Explicitly set the content type
-              cacheControl: '3600'
+          try {
+            // Generate safe filename for Georgian/Unicode characters
+            // Use a more robust approach that ensures uniqueness and validity
+            const timestamp = Date.now() + index; // Add index to ensure uniqueness even for simultaneous uploads
+            const originalExtension = file.name.split('.').pop() || 'pdf';
+            
+            // Create a safe base name by encoding Georgian/Unicode properly
+            // Keep only ASCII letters, numbers, dots, hyphens for storage safety
+            let baseName = file.name
+              .replace(/\.[^.]*$/, '') // Remove extension first
+              .normalize('NFKD') // Normalize Unicode
+              .replace(/[^\w\s-]/g, '') // Keep only word chars, spaces, hyphens
+              .trim()
+              .replace(/\s+/g, '-') // Replace spaces with hyphens
+              .substring(0, 50); // Limit length to prevent issues
+            
+            // If baseName is empty or too short after sanitization, use fallback
+            if (!baseName || baseName.length < 3) {
+              baseName = 'medical-document';
+            }
+            
+            // Create unique filename with timestamp to prevent conflicts
+            const finalFileName = `${baseName}-${timestamp}.${originalExtension}`;
+            const filePath = `${questionId}/${finalFileName}`;
+            
+            console.log(`📁 Uploading file ${index + 1}/${attachments.length}:`, {
+              originalName: file.name,
+              safeName: finalFileName,
+              filePath: filePath,
+              fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`
             });
+            
+            // Upload file to storage with retry logic
+            const arrayBuffer = await file.arrayBuffer();
+            const fileBuffer = new Uint8Array(arrayBuffer);
+            
+            let uploadSuccess = false;
+            let lastUploadError = null;
+            
+            // Retry upload up to 3 times with exponential backoff
+            for (let retry = 0; retry < 3; retry++) {
+              try {
+                const { error: uploadError } = await supabase.storage
+                  .from('question-attachments')
+                  .upload(filePath, fileBuffer, {
+                    contentType: file.type,
+                    cacheControl: '3600',
+                    upsert: retry > 0 // Allow overwrite on retry
+                  });
 
-          if (uploadError) throw uploadError;
+                if (!uploadError) {
+                  uploadSuccess = true;
+                  break;
+                }
+                
+                lastUploadError = uploadError;
+                console.warn(`Upload attempt ${retry + 1} failed for ${file.name}:`, uploadError);
+                
+                // Wait before retry (exponential backoff)
+                if (retry < 2) {
+                  await new Promise(resolve => setTimeout(resolve, Math.pow(2, retry) * 1000));
+                }
+              } catch (networkError) {
+                lastUploadError = networkError;
+                console.warn(`Network error on attempt ${retry + 1} for ${file.name}:`, networkError);
+                
+                // Wait before retry
+                if (retry < 2) {
+                  await new Promise(resolve => setTimeout(resolve, Math.pow(2, retry) * 1000));
+                }
+              }
+            }
 
-          // Create attachment record with extraction info
-          const { error: attachmentError } = await supabase
-            .from('doctor_question_attachments')
-            .insert({
-              question_id: questionId,
-              file_name: file.name, // Keep original Georgian filename for display
-              file_type: file.type,
-              file_size: file.size,
-              file_path: filePath, // Safe filename path for storage
-              // Store PDF extraction info if available (optional fields for backward compatibility)
-              ...(attachment.extractedText && { extracted_text: attachment.extractedText }),
-              ...(attachment.pdfPageCount && { pdf_page_count: attachment.pdfPageCount }),
-              ...(attachment.progressInfo?.method && { extraction_method: attachment.progressInfo.method })
-            });
+            if (!uploadSuccess) {
+              throw lastUploadError;
+            }
 
-          if (attachmentError) {
-            // If the error is due to missing columns, try inserting without the new fields
-            if (attachmentError.message?.includes('column') || attachmentError.code === '42703') {
-              console.warn('Database schema not updated yet, inserting without PDF extraction fields:', attachmentError.message);
-              
-              const { error: fallbackError } = await supabase
+            // Create attachment record with extraction info
+            const { error: attachmentError } = await supabase
+              .from('doctor_question_attachments')
+              .insert({
+                question_id: questionId,
+                file_name: file.name, // Keep original Georgian filename for display
+                file_type: file.type,
+                file_size: file.size,
+                file_path: filePath, // Safe filename path for storage
+                upload_status: 'success',
+                // Store PDF extraction info if available (optional fields for backward compatibility)
+                ...(attachment.extractedText && { extracted_text: attachment.extractedText }),
+                ...(attachment.pdfPageCount && { pdf_page_count: attachment.pdfPageCount }),
+                ...(attachment.progressInfo?.method && { extraction_method: attachment.progressInfo.method })
+              });
+
+            if (attachmentError) {
+              // If the error is due to missing columns, try inserting without the new fields
+              if (attachmentError.message?.includes('column') || attachmentError.code === '42703') {
+                console.warn('Database schema not updated yet, inserting without PDF extraction fields:', attachmentError.message);
+                
+                const { error: fallbackError } = await supabase
+                  .from('doctor_question_attachments')
+                  .insert({
+                    question_id: questionId,
+                    file_name: file.name, // Keep original Georgian filename
+                    file_type: file.type,
+                    file_size: file.size,
+                    file_path: filePath   // Safe filename path
+                  });
+                
+                if (fallbackError) throw fallbackError;
+              } else {
+                throw attachmentError;
+              }
+            }
+
+            successfulUploads++;
+            uploadResults.push({ file: file.name, status: 'success' });
+            console.log(`✅ Successfully uploaded: ${file.name}`);
+
+          } catch (err) {
+            failedUploads++;
+            uploadResults.push({ file: file.name, status: 'failed', error: err });
+            console.error(`❌ Failed to upload ${file.name}:`, err);
+            
+            // Try to record the failed upload in the database for tracking
+            try {
+              await supabase
                 .from('doctor_question_attachments')
                 .insert({
                   question_id: questionId,
-                  file_name: file.name, // Keep original Georgian filename
+                  file_name: file.name,
                   file_type: file.type,
                   file_size: file.size,
-                  file_path: filePath   // Safe filename path
+                  file_path: null,
+                  upload_status: 'failed',
+                  error_message: err instanceof Error ? err.message : 'Upload failed'
                 });
-              
-              if (fallbackError) throw fallbackError;
-            } else {
-              throw attachmentError;
+            } catch (dbError) {
+              console.warn('Could not record failed upload in database:', dbError);
             }
           }
+        }
+
+        // Log upload summary
+        console.log('📊 File Upload Summary:', {
+          total: attachments.length,
+          successful: successfulUploads,
+          failed: failedUploads,
+          results: uploadResults
+        });
+
+        // Show warning if some files failed, but don't prevent success
+        if (failedUploads > 0) {
+          console.warn(`⚠️ ${failedUploads} out of ${attachments.length} files failed to upload. Question submitted successfully with ${successfulUploads} attachments.`);
         }
       }
       
