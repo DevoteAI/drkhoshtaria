@@ -140,8 +140,15 @@ export const ru = {
       }
     }
   },
+  askDoctor: {
+    form: {
+      namePlaceholder: 'Ваше имя',
+      emailPlaceholder: 'Ваш email'
+    }
+  },
   chat: {
     title: 'AI Медицинский Ассистент',
+    subtitle: 'Получите экспертные медицинские консультации 24/7',
     disk: {
       medicalAssistance: 'Медицинская Помощь',
       healthGuidance: 'Советы по Здоровью',
@@ -153,6 +160,7 @@ export const ru = {
     error: 'Извините, но возникли проблемы с подключением. Пожалуйста, попробуйте еще раз.',
     online: 'Онлайн',
     typing: 'Печатает...',
+    thinking: 'Думает...',
     inputAriaLabel: 'Ввод сообщения',
     sendAriaLabel: 'Отправить сообщение',
     quickReplies: {

@@ -140,8 +140,15 @@ export const ka = {
       }
     }
   },
+  askDoctor: {
+    form: {
+      namePlaceholder: 'თქვენი სახელი',
+      emailPlaceholder: 'თქვენი ელ-ფოსტა'
+    }
+  },
   chat: {
     title: 'AI სამედიცინო ასისტენტი',
+    subtitle: 'მიიღეთ ექსპერტული სამედიცინო რჩევები 24/7',
     disk: {
       medicalAssistance: 'სამედიცინო დახმარება',
       healthGuidance: 'ჯანმრთელობის გზამკვლევი',
@@ -153,6 +160,7 @@ export const ka = {
     error: 'ბოდიში, მაგრამ დაკავშირება ვერ ხერხდება. გთხოვთ სცადოთ ხელახლა.',
     online: 'ონლაინ',
     typing: 'წერს...',
+    thinking: 'ფიქრობს...',
     inputAriaLabel: 'შეტყობინების შეყვანა',
     sendAriaLabel: 'შეტყობინების გაგზავნა',
     quickReplies: {

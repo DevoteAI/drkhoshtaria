@@ -1,7 +1,10 @@
 import { FlowiseRequest, Attachment, FlowiseUpload } from '../../types/chat';
 import { convertAttachmentToFlowiseUpload } from '../../utils/fileUpload';
 
-const API_URL = "https://flowise-2-0.onrender.com/api/v1/prediction/b4fd6d68-19cd-4449-8be8-1f80c2d791bf";
+// Use proxy URL in development, direct URL in production
+const API_URL = import.meta.env.DEV 
+  ? "/api/flowise/api/v1/prediction/b4fd6d68-19cd-4449-8be8-1f80c2d791bf"
+  : "https://flowise-2-0.onrender.com/api/v1/prediction/b4fd6d68-19cd-4449-8be8-1f80c2d791bf";
 
 export interface ChatApiResponse {
   text: string;
@@ -86,13 +89,14 @@ export async function fetchAIResponse(
       sessionId,
       textContentCount: textContent.length,
       fileUploadCount: fileUploads.length,
-      hasUploads: fileUploads.length > 0
+      hasUploads: fileUploads.length > 0,
+      apiUrl: API_URL
     });
 
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody)
     });
@@ -112,6 +116,17 @@ export async function fetchAIResponse(
         statusText: response.statusText,
         body: errorData
       });
+      
+      // Handle specific HTTP status codes
+      if (response.status === 502) {
+        throw new Error('The AI service is temporarily unavailable (502 Bad Gateway). This usually means the server is down for maintenance or experiencing high load. Please try again in a few minutes.');
+      } else if (response.status === 503) {
+        throw new Error('The AI service is temporarily unavailable (503 Service Unavailable). Please try again in a few minutes.');
+      } else if (response.status === 504) {
+        throw new Error('The AI service is taking too long to respond (504 Gateway Timeout). Please try again.');
+      } else if (response.status >= 500) {
+        throw new Error(`The AI service is experiencing technical difficulties (${response.status}). Please try again later.`);
+      }
       
       throw new Error(`API request failed: ${response.status} ${response.statusText}. Response: ${errorData}`);
     }
@@ -143,6 +158,19 @@ export async function fetchAIResponse(
     });
     
     if (error instanceof Error) {
+      // Check for CORS-specific errors
+      if (error.message.includes('Failed to fetch') || 
+          error.message.includes('CORS') || 
+          error.message.includes('Access-Control-Allow-Origin')) {
+        throw new Error('Network error: Unable to connect to the AI service. This might be due to network connectivity issues or server configuration. Please try again or contact support if the problem persists.');
+      }
+      
+      // Check for other network errors
+      if (error.message.includes('NetworkError') || 
+          error.message.includes('TypeError')) {
+        throw new Error('Connection error: Could not reach the AI service. Please check your internet connection and try again.');
+      }
+      
       throw error;
     }
     
@@ -151,10 +179,71 @@ export async function fetchAIResponse(
 }
 
 /**
+ * Check if the AI service is available
+ */
+export async function checkServiceHealth(): Promise<{ 
+  isHealthy: boolean; 
+  error?: string; 
+  responseTime?: number 
+}> {
+  const startTime = Date.now();
+  
+  try {
+    // Create an AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
+    const response = await fetch(API_URL.replace('/prediction/', '/health'), {
+      method: 'GET',
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    const responseTime = Date.now() - startTime;
+    
+    if (response.ok) {
+      return { 
+        isHealthy: true, 
+        responseTime 
+      };
+    } else {
+      return { 
+        isHealthy: false, 
+        error: `Service returned ${response.status}: ${response.statusText}`,
+        responseTime
+      };
+    }
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+    
+    if (error instanceof Error && error.name === 'AbortError') {
+      return { 
+        isHealthy: false, 
+        error: 'Request timed out after 10 seconds',
+        responseTime
+      };
+    }
+    
+    return { 
+      isHealthy: false, 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      responseTime
+    };
+  }
+}
+
+/**
  * Test API connectivity
  */
 export async function testApiConnection(): Promise<boolean> {
   try {
+    const health = await checkServiceHealth();
+    if (!health.isHealthy) {
+      console.warn('Service health check failed:', health.error);
+      return false;
+    }
+    
+    // If health check passes, try a minimal request
     const response = await fetchAIResponse('test', 'test-session');
     return true;
   } catch (error) {

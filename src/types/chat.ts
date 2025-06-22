@@ -77,5 +77,5 @@ export const DEFAULT_FILE_CONFIG: FileValidationConfig = {
     'image/webp',
     'application/pdf'
   ],
-  maxFiles: 5
+  maxFiles: 15
 }; 

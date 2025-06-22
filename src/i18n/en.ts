@@ -140,8 +140,15 @@ export const en = {
       }
     }
   },
+  askDoctor: {
+    form: {
+      namePlaceholder: 'Your name',
+      emailPlaceholder: 'Your email'
+    }
+  },
   chat: {
     title: 'AI Medical Assistant',
+    subtitle: 'Get expert medical guidance available 24/7',
     disk: {
       medicalAssistance: 'Medical Assistance',
       healthGuidance: 'Health Guidance',
@@ -153,6 +160,7 @@ export const en = {
     error: 'I apologize, but I\'m having trouble connecting. Please try again.',
     online: 'Online',
     typing: 'Typing...',
+    thinking: 'Thinking...',
     inputAriaLabel: 'Message input',
     sendAriaLabel: 'Send message',
     quickReplies: {

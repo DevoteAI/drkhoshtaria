@@ -1,16 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, Loader2, Clock, Check, Image as ImageIcon, Smile, Paperclip, X, User, ChevronDown, Info, HelpCircle, Moon, Sun, History, ArrowLeft, Trash2, AlertCircle, FileText, File, FileImage } from 'lucide-react';
+import { Send, Bot, Loader2, Clock, Check, Image as ImageIcon, Smile, Paperclip, X, User, ChevronDown, Info, HelpCircle, Moon, Sun, History, ArrowLeft, Trash2, AlertCircle, FileText, File, FileImage, Plus, Edit } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { supabase } from '../lib/supabase';
 import { Message, Attachment, ChatSession } from '../types/chat';
 import { useFlowiseChat } from '../hooks/useFlowiseChat';
+import { EditResponseForm } from './EditResponseForm';
 
 // Generate a random session ID
 const generateSessionId = () => {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 };
+
+// Webhook URL for email notifications
+const WEBHOOK_URL = "https://hook.eu2.make.com/oshr1mqp66b2cusj5nov19v4m9jx8t9n";
 
 interface QuickReply {
   text: string;
@@ -58,6 +62,7 @@ export function ChatBot({ embedded = false }: ChatBotProps) {
   const [deletingSession, setDeletingSession] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -217,6 +222,9 @@ export function ChatBot({ embedded = false }: ChatBotProps) {
         setMessages([]);
         clearAttachments();
       }
+
+      // Refresh the sessions list to ensure consistency
+      await fetchAllChatSessions();
     } catch (err) {
       console.error('Error deleting chat session:', err);
       setDeleteError('Failed to delete conversation');
@@ -364,6 +372,222 @@ export function ChatBot({ embedded = false }: ChatBotProps) {
     }).format(date);
   };
 
+  // Convert markdown to HTML and create professional email template
+  const createEmailHTML = (emailData: {
+    patientName: string;
+    patientEmail: string;
+    patientPhone: string;
+    originalQuestion: string;
+    editedResponse: string;
+  }) => {
+    // Convert markdown to HTML
+    const responseHTML = DOMPurify.sanitize(marked(emailData.editedResponse));
+    
+    return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Medical Response - Dr. Khoshtaria</title>
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f8f9fa;
+            }
+            .header {
+                background: linear-gradient(135deg, #0891b2, #06b6d4);
+                color: white;
+                padding: 30px;
+                text-align: center;
+                border-radius: 10px 10px 0 0;
+                margin-bottom: 0;
+            }
+            .header h1 {
+                margin: 0;
+                font-size: 28px;
+                font-weight: 600;
+            }
+            .header p {
+                margin: 5px 0 0 0;
+                opacity: 0.9;
+                font-size: 16px;
+            }
+            .content {
+                background: white;
+                padding: 30px;
+                border-radius: 0 0 10px 10px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            .patient-info {
+                background: #f1f5f9;
+                padding: 20px;
+                border-radius: 8px;
+                margin-bottom: 25px;
+                border-left: 4px solid #0891b2;
+            }
+            .patient-info h3 {
+                margin: 0 0 10px 0;
+                color: #0891b2;
+                font-size: 18px;
+            }
+            .info-row {
+                margin: 8px 0;
+                font-size: 14px;
+            }
+            .info-label {
+                font-weight: 600;
+                color: #64748b;
+            }
+            .section {
+                margin: 25px 0;
+            }
+            .section h3 {
+                color: #0891b2;
+                font-size: 18px;
+                margin-bottom: 15px;
+                padding-bottom: 8px;
+                border-bottom: 2px solid #e2e8f0;
+            }
+            .question-box {
+                background: #fefefe;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 20px;
+                margin: 15px 0;
+                font-style: italic;
+                color: #475569;
+            }
+            .response-box {
+                background: #fefefe;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 20px;
+                margin: 15px 0;
+            }
+            .response-box ul, .response-box ol {
+                margin: 10px 0;
+                padding-left: 20px;
+            }
+            .response-box li {
+                margin: 5px 0;
+            }
+            .response-box strong {
+                color: #0891b2;
+            }
+            .footer {
+                text-align: center;
+                margin-top: 30px;
+                padding: 20px;
+                background: #f8fafc;
+                border-radius: 8px;
+                font-size: 14px;
+                color: #64748b;
+            }
+            .footer strong {
+                color: #0891b2;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Dr. Khoshtaria Medical Platform</h1>
+            <p>Professional Medical Consultation Response</p>
+        </div>
+        
+        <div class="content">
+            <div class="patient-info">
+                <h3>Patient Information</h3>
+                <div class="info-row">
+                    <span class="info-label">Name:</span> ${emailData.patientName || 'Not provided'}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email:</span> ${emailData.patientEmail || 'Not provided'}
+                </div>
+                ${emailData.patientPhone ? `
+                <div class="info-row">
+                    <span class="info-label">Phone:</span> ${emailData.patientPhone}
+                </div>
+                ` : ''}
+                <div class="info-row">
+                    <span class="info-label">Date:</span> ${new Date().toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })}
+                </div>
+            </div>
+
+            ${emailData.originalQuestion ? `
+            <div class="section">
+                <h3>Your Question</h3>
+                <div class="question-box">
+                    ${emailData.originalQuestion}
+                </div>
+            </div>
+            ` : ''}
+
+            <div class="section">
+                <h3>Medical Response</h3>
+                <div class="response-box">
+                    ${responseHTML}
+                </div>
+            </div>
+
+        </div>
+
+        <div class="footer">
+            <strong>Dr. Khoshtaria Medical Platform</strong><br>
+            Professional Healthcare Consultation Services<br>
+            <em>This email was generated on ${new Date().toLocaleDateString()}</em>
+        </div>
+    </body>
+    </html>
+    `;
+  };
+
+  // Handle email sending for edited responses
+  const handleSendEmail = async (emailData: {
+    patientName: string;
+    patientEmail: string;
+    patientPhone: string;
+    originalQuestion: string;
+    editedResponse: string;
+  }) => {
+    try {
+      const htmlContent = createEmailHTML(emailData);
+      
+      await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: emailData.patientName,
+          email: emailData.patientEmail,
+          phone: emailData.patientPhone,
+          question: emailData.originalQuestion,
+          response: htmlContent, // Send HTML instead of markdown
+          ai_response: editingMessage?.content,
+          isHTML: true // Flag to indicate HTML content
+        }),
+      });
+      
+      // Show success message
+      alert('Response sent successfully!');
+    } catch (error) {
+      console.error('Error sending response:', error);
+      throw new Error('Failed to send response. Please try again.');
+    }
+  };
+
   // Handle file selection
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -438,22 +662,22 @@ export function ChatBot({ embedded = false }: ChatBotProps) {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    clearChat();
+                  }}
+                  className="text-white/80 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition-all"
+                  aria-label="New Chat"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
                     toggleHistory();
                   }}
                   className="text-white/80 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition-all"
                   aria-label="Chat History"
                 >
                   <History className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    clearChat();
-                  }}
-                  className="text-white/80 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition-all"
-                  aria-label="Clear Chat"
-                >
-                  <Trash2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={(e) => {
@@ -687,15 +911,31 @@ export function ChatBot({ embedded = false }: ChatBotProps) {
                         </div>
                       )}
                       
-                      <div className={`flex items-center mt-1 space-x-1 text-xs ${
+                      <div className={`flex items-center justify-between mt-1 text-xs ${
                         isDarkMode ? 'text-dark-300' : 'text-gray-500'
                       } opacity-0 group-hover:opacity-100 transition-opacity`}>
-                        <Clock className="w-3 h-3" />
-                        <span>{formatTimestamp(message.timestamp)}</span>
-                        {message.type === 'bot' && (
-                          <Check className={`w-3 h-3 ${
-                            message.read ? 'text-green-500' : isDarkMode ? 'text-dark-300' : 'text-gray-400'
-                          }`} />
+                        <div className="flex items-center space-x-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{formatTimestamp(message.timestamp)}</span>
+                          {message.type === 'bot' && (
+                            <Check className={`w-3 h-3 ${
+                              message.read ? 'text-green-500' : isDarkMode ? 'text-dark-300' : 'text-gray-400'
+                            }`} />
+                          )}
+                        </div>
+                        {message.type === 'bot' && !message.isLoading && (
+                          <button
+                            onClick={() => setEditingMessage(message)}
+                            className={`flex items-center space-x-1 px-2 py-1 rounded-md transition-colors ${
+                              isDarkMode 
+                                ? 'hover:bg-dark-600/50 text-dark-300 hover:text-cyan-400' 
+                                : 'hover:bg-gray-100 text-gray-500 hover:text-cyan-600'
+                            }`}
+                            title="Edit and send to patient"
+                          >
+                            <Edit className="w-3 h-3" />
+                            <span>Edit & Send</span>
+                          </button>
                         )}
                       </div>
                     </div>
@@ -914,6 +1154,15 @@ export function ChatBot({ embedded = false }: ChatBotProps) {
             </form>
           </div>
         </>
+      )}
+      
+      {/* Edit Response Modal */}
+      {editingMessage && (
+        <EditResponseForm
+          message={editingMessage}
+          onClose={() => setEditingMessage(null)}
+          onSendEmail={handleSendEmail}
+        />
       )}
     </div>
   );

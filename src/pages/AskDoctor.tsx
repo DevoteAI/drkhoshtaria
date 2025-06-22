@@ -29,6 +29,8 @@ export function AskDoctor() {
   const [error, setError] = useState<string | null>(null);
   const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
   const [voiceDuration, setVoiceDuration] = useState<number | null>(null);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+  const [uploadingFileCount, setUploadingFileCount] = useState(0);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Cleanup effect to prevent memory leaks
@@ -66,23 +68,67 @@ export function AskDoctor() {
 
     setError(null);
 
+    // Show immediate upload progress
+    setIsUploadingFiles(true);
+    setUploadingFileCount(files.length);
+
     // Process files with progress tracking
     try {
+      // Create initial attachment objects for immediate UI feedback
+      const initialAttachments = files.map(file => ({
+        id: Math.random().toString(36).substring(2, 15),
+        file,
+        uploadType: file.type.startsWith('image/') ? 'image' as const : 
+                   file.type === 'application/pdf' ? 'pdf' as const : 'document' as const,
+        status: 'processing' as const,
+        base64Data: '',
+        preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+        progressInfo: {
+          stage: 'analyzing' as const,
+          stageDescription: 'Starting upload...',
+          percentage: 0
+        }
+      }));
+
+      // Add initial attachments to UI immediately
+      setAttachments(prev => [...prev, ...initialAttachments]);
+
+      // Process files one by one for better progress tracking
       const processedFiles = await Promise.all(
-        files.map(file => processFileForUpload(file, (progress) => {
-          // Update progress for each file
+        files.map(async (file, index) => {
+          const initialAttachment = initialAttachments[index];
+          
+          const processedFile = await processFileForUpload(file, (progress) => {
+            // Update progress for this specific file
+            setAttachments(prev => prev.map(att => 
+              att.id === initialAttachment.id
+                ? { ...att, progressInfo: progress }
+                : att
+            ));
+          });
+
+          // Update the status when complete
           setAttachments(prev => prev.map(att => 
-            att.file.name === file.name && att.file.size === file.size 
-              ? { ...att, progressInfo: progress }
+            att.id === initialAttachment.id
+              ? { ...att, ...processedFile }
               : att
           ));
-        }))
+
+          return processedFile;
+        })
       );
 
-      setAttachments(prev => [...prev, ...processedFiles]);
+      console.log('✅ All files processed successfully:', {
+        fileCount: processedFiles.length,
+        successCount: processedFiles.filter(f => f.status === 'ready').length
+      });
+
     } catch (err) {
       console.error('Error processing files:', err);
       setError('Failed to process some files. Please try again.');
+    } finally {
+      setIsUploadingFiles(false);
+      setUploadingFileCount(0);
     }
 
     e.target.value = ''; // Reset input
@@ -222,7 +268,25 @@ export function AskDoctor() {
       if (attachments.length > 0) {
         for (const attachment of attachments) {
           const { file } = attachment;
-          const filePath = `${questionId}/${file.name}`;
+          
+          // Generate safe filename for Georgian/Unicode characters
+          // Replace problematic characters and encode filename properly
+          const safeFileName = file.name
+            .replace(/[^\w\-_.]/g, '_') // Replace any non-alphanumeric characters except dash, underscore, and dot
+            .replace(/_{2,}/g, '_')     // Replace multiple underscores with single underscore
+            .replace(/^_+|_+$/g, '');  // Remove leading/trailing underscores
+          
+          // Add file extension back if it was lost
+          const originalExtension = file.name.split('.').pop();
+          const finalFileName = safeFileName.includes('.') ? safeFileName : `${safeFileName}.${originalExtension}`;
+          
+          const filePath = `${questionId}/${finalFileName}`;
+          
+          console.log('📁 Uploading file with safe filename:', {
+            originalName: file.name,
+            safeName: finalFileName,
+            filePath: filePath
+          });
           
           // Upload file to storage - using arrayBuffer instead of direct file upload
           const arrayBuffer = await file.arrayBuffer();
@@ -242,10 +306,10 @@ export function AskDoctor() {
             .from('doctor_question_attachments')
             .insert({
               question_id: questionId,
-              file_name: file.name,
+              file_name: file.name, // Keep original Georgian filename for display
               file_type: file.type,
               file_size: file.size,
-              file_path: filePath,
+              file_path: filePath, // Safe filename path for storage
               // Store PDF extraction info if available (optional fields for backward compatibility)
               ...(attachment.extractedText && { extracted_text: attachment.extractedText }),
               ...(attachment.pdfPageCount && { pdf_page_count: attachment.pdfPageCount }),
@@ -261,10 +325,10 @@ export function AskDoctor() {
                 .from('doctor_question_attachments')
                 .insert({
                   question_id: questionId,
-                  file_name: file.name,
+                  file_name: file.name, // Keep original Georgian filename
                   file_type: file.type,
                   file_size: file.size,
-                  file_path: filePath
+                  file_path: filePath   // Safe filename path
                 });
               
               if (fallbackError) throw fallbackError;
@@ -447,7 +511,7 @@ export function AskDoctor() {
                       ))}
                     </ul>
                     <p className="text-sm text-dark-300 mb-4">
-                      {t('aiChat.askDoctor.attachments.limits')}
+                      Maximum 15 files, 10MB each. PDF files will have their text extracted for analysis.
                     </p>
                   </div>
 
@@ -486,15 +550,53 @@ export function AskDoctor() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="mt-4 w-full flex items-center justify-center px-4 py-3 rounded-lg bg-dark-700/50 border border-dark-600/30 text-dark-100 hover:text-white hover:bg-dark-600/50 transition-all duration-300 group"
+                    disabled={isUploadingFiles}
+                    className="mt-4 w-full flex items-center justify-center px-4 py-3 rounded-lg bg-dark-700/50 border border-dark-600/30 text-dark-100 hover:text-white hover:bg-dark-600/50 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Paperclip className="w-5 h-5 mr-2 group-hover:text-cyan-300" />
-                    {t('aiChat.askDoctor.attachments.button')}
+                    {isUploadingFiles ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin text-cyan-400" />
+                        Processing {uploadingFileCount} file{uploadingFileCount !== 1 ? 's' : ''}...
+                      </>
+                    ) : (
+                      <>
+                        <Paperclip className="w-5 h-5 mr-2 group-hover:text-cyan-300" />
+                        {t('aiChat.askDoctor.attachments.button')}
+                      </>
+                    )}
                   </button>
+
+                  {/* Upload Progress Summary */}
+                  {isUploadingFiles && uploadingFileCount > 0 && (
+                    <div className="mt-3 bg-dark-700/30 rounded-lg p-4 border border-cyan-400/20">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-cyan-300 font-medium">
+                          Uploading Files
+                        </span>
+                        <span className="text-cyan-200 text-sm">
+                          {uploadingFileCount} file{uploadingFileCount !== 1 ? 's' : ''} in progress
+                        </span>
+                      </div>
+                      <div className="w-full bg-dark-600 rounded-full h-2">
+                        <div 
+                          className="bg-gradient-to-r from-cyan-500 to-cyan-400 h-2 rounded-full transition-all duration-500 animate-pulse"
+                          style={{ width: '60%' }}
+                        />
+                      </div>
+                      <p className="text-xs text-dark-300 mt-2">
+                        Please wait while we process your files...
+                      </p>
+                    </div>
+                  )}
 
                   {attachments.length > 0 && (
                     <div className="mt-4 space-y-2">
-                      <h4 className="text-sm font-medium text-dark-200">Attachments:</h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-medium text-dark-200">Attachments:</h4>
+                        <span className="text-xs text-dark-300">
+                          {attachments.length}/{DEFAULT_FILE_CONFIG.maxFiles} files
+                        </span>
+                      </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {attachments.map((attachment) => (
                           <div

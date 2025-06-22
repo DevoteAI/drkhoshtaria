@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Play, ArrowLeft, X, FileText, Download } from 'lucide-react';
+import { Play, ArrowLeft, X, FileText, Download, ExternalLink, Folder, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import LiteYouTubeEmbed from 'react-lite-youtube-embed';
@@ -19,6 +19,22 @@ interface Document {
   title: string;
   description: string;
   url: string;
+}
+
+interface DocumentFolder {
+  id: string;
+  title: string;
+  description: string;
+  documents: Document[];
+}
+
+interface GeorgianEducationalResource {
+  id: string;
+  title: string;
+  description: string;
+  type: 'document' | 'folder';
+  url?: string;
+  folder?: DocumentFolder;
 }
 
 const englishVideos: Video[] = [
@@ -90,24 +106,100 @@ const englishVideos: Video[] = [
   },
 ];
 
-const georgianDocuments: Document[] = [
+const georgianEducationalResources: GeorgianEducationalResource[] = [
   {
     id: '1',
     title: 'ორსულთა ვარჯიშები',
     description: 'რეკომენდებული ვარჯიშები ორსულობის პერიოდში ჯანმრთელობის შესანარჩუნებლად და მშობიარობისთვის მოსამზადებლად',
+    type: 'document',
     url: 'https://drive.google.com/file/d/1IoJS9gQuLlgY_YLTVC7tKC8sD7RylSKT/view?usp=drive_link',
   },
   {
     id: '2',
     title: 'ანტენატალური მეთვალყურეობა',
     description: 'ინფორმაცია ანტენატალური მეთვალყურეობის შესახებ, რეკომენდაციები და მნიშვნელოვანი ასპექტები',
+    type: 'document',
     url: 'https://docs.google.com/document/d/1Tf_z4QMo4eFpLgY_hMbgvT08jTHGLijQ/edit?usp=drive_link&ouid=115264195349483882998&rtpof=true&sd=true',
   },
   {
     id: '3',
     title: 'კვებითი რეკომენდაციები ორსულთათვის',
     description: 'მნიშვნელოვანი რეკომენდაციები ორსულთა კვების შესახებ, საჭირო საკვები ნივთიერებები და პრაქტიკული რჩევები',
+    type: 'document',
     url: 'https://drive.google.com/file/d/16aAcwUblHNWIwZzHzK99-Ra-e5hMEJM2/view?usp=sharing',
+  },
+  {
+    id: '4',
+    title: 'ორსულთა სკოლა',
+    description: 'სრული საგანმანათლებლო კურსი ორსული ქალებისთვის - ვარჯიშები, მეცადინეობები, მოდუნება და მშობიარობისთვის მომზადება',
+    type: 'folder',
+    folder: {
+      id: 'pregnant-school',
+      title: 'ორსულთა სკოლა',
+      description: 'სრული საგანმანათლებლო კურსი ორსული ქალებისთვის',
+      documents: [
+        {
+          id: 'pregnant-1',
+          title: 'ორსულობის ვარჯიშები',
+          description: 'რეკომენდებული ვარჯიშები ორსულობის პერიოდში ფიზიკური მომზადებისთვის',
+          url: 'https://drive.google.com/file/d/1TmGIFGk6O83R7IfSQJC9W9n4pdFulk0C/view?usp=sharing'
+        },
+        {
+          id: 'pregnant-2',
+          title: 'მეცადინეობა ნაწილი 1',
+          description: 'პირველი მეცადინეობა ორსულთა სკოლაში - ძირითადი ცოდნა და მომზადება',
+          url: 'https://drive.google.com/file/d/1Yi2IczKMSPe_p12ywi-RdqBEWEPrgFzi/view?usp=sharing'
+        },
+        {
+          id: 'pregnant-3',
+          title: 'მეცადინეობა ნაწილი 2-3',
+          description: 'მეორე და მესამე მეცადინეობა - გაღრმავებული ცოდნა და პრაქტიკული რჩევები',
+          url: 'https://drive.google.com/file/d/1ppK3in1jTRanX0e3BSoexjgAtiK7AYwX/view?usp=sharing'
+        },
+        {
+          id: 'pregnant-4',
+          title: 'მეცადინეობა ნაწილი 4-5',
+          description: 'მეოთხე და მეხუთე მეცადინეობა - პრაქტიკული უნარები და მომზადება',
+          url: 'https://drive.google.com/file/d/1wxn7dHd2mhNRZ3-0Tr5wP4-8fAyXetKJ/view?usp=sharing'
+        },
+        {
+          id: 'pregnant-5',
+          title: 'მეცადინეობა ნაწილი 6-10',
+          description: 'მეექვსიდან მეათე მეცადინეობამდე - სრული კურსის დასრულება',
+          url: 'https://drive.google.com/file/d/1Ib9GuDMSGwOxmH31tcEiALSW7J-PHkPf/view?usp=sharing'
+        },
+        {
+          id: 'pregnant-6',
+          title: 'მოდუნება',
+          description: 'მოდუნების ტექნიკები და რელაქსაციის მეთოდები ორსულობის პერიოდში',
+          url: 'https://drive.google.com/file/d/1nK3Xm9gBQYpIeA0l9Qu5UKapJ_bEbigH/view?usp=sharing'
+        },
+        {
+          id: 'pregnant-7',
+          title: 'მშობელთა სკოლა',
+          description: 'მშობელთა მომზადება და ფსიქოლოგიური მხარდაჭერა',
+          url: 'https://drive.google.com/file/d/1oe0DbRml32qRbe1PQQPJEkksAcjYSK8M/view?usp=sharing'
+        },
+        {
+          id: 'pregnant-8',
+          title: 'ნაყოფის გამოდევნა',
+          description: 'ინფორმაცია მშობიარობის პროცესისა და ნაყოფის გამოდევნის შესახებ',
+          url: 'https://drive.google.com/file/d/1dF5bue76X0iTa81Atw7YiDwKFvu0thxh/view?usp=sharing'
+        },
+        {
+          id: 'pregnant-9',
+          title: 'სუნთქვა',
+          description: 'სუნთქვის ტექნიკები მშობიარობისა და ორსულობის დროს',
+          url: 'https://drive.google.com/file/d/1aQo_BhdFDVtnDtPZvEsgNktC96NiKZbL/view?usp=sharing'
+        },
+        {
+          id: 'pregnant-10',
+          title: 'ორსულთა სკოლა',
+          description: 'ზოგადი ინფორმაცია და რეკომენდაციები ორსულთა სკოლის შესახებ',
+          url: 'https://drive.google.com/file/d/1j8ti8zSTNx1B1JZHxe51o_HU6NtqMJeX/view?usp=sharing'
+        }
+      ]
+    }
   }
 ];
 
@@ -471,6 +563,70 @@ function VideoCard({ video, onPlay }: { video: Video; onPlay: (video: Video) => 
   );
 }
 
+function EducationalResourceCard({ 
+  resource, 
+  onFolderClick 
+}: { 
+  resource: GeorgianEducationalResource; 
+  onFolderClick?: (folder: DocumentFolder) => void; 
+}) {
+  if (resource.type === 'folder' && resource.folder) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="bg-dark-800/50 backdrop-blur-sm rounded-xl border border-dark-700/30 overflow-hidden hover:border-cyan-400/30 transition-all duration-300 group cursor-pointer"
+        onClick={() => onFolderClick?.(resource.folder!)}
+      >
+        <div className="p-6">
+          <div className="flex items-center mb-4">
+            <Folder className="w-10 h-10 text-cyan-400 mr-3" />
+            <h3 className="text-xl font-semibold text-white group-hover:text-cyan-300 transition-colors">
+              {resource.title}
+            </h3>
+            <ChevronRight className="w-5 h-5 text-cyan-400 ml-auto group-hover:translate-x-1 transition-transform" />
+          </div>
+          <p className="text-dark-100 mb-4">{resource.description}</p>
+          <div className="flex items-center text-sm text-cyan-400">
+            <FileText className="w-4 h-4 mr-1" />
+            {resource.folder.documents.length} დოკუმენტი
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Regular document
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="bg-dark-800/50 backdrop-blur-sm rounded-xl border border-dark-700/30 overflow-hidden hover:border-cyan-400/30 transition-all duration-300 group"
+    >
+      <div className="p-6">
+        <div className="flex items-center mb-4">
+          <FileText className="w-10 h-10 text-cyan-400 mr-3" />
+          <h3 className="text-xl font-semibold text-white group-hover:text-cyan-300 transition-colors">
+            {resource.title}
+          </h3>
+        </div>
+        <p className="text-dark-100 mb-4">{resource.description}</p>
+        <a
+          href={resource.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center mt-2 text-cyan-400 hover:text-cyan-300 transition-colors px-4 py-2 border border-cyan-400/30 rounded-lg hover:bg-cyan-400/10"
+        >
+          <ExternalLink className="w-4 h-4 mr-2" />
+          გახსნა / ჩამოტვირთვა
+        </a>
+      </div>
+    </motion.div>
+  );
+}
+
 function DocumentCard({ document }: { document: Document }) {
   return (
     <motion.div
@@ -493,7 +649,7 @@ function DocumentCard({ document }: { document: Document }) {
           rel="noopener noreferrer"
           className="inline-flex items-center mt-2 text-cyan-400 hover:text-cyan-300 transition-colors px-4 py-2 border border-cyan-400/30 rounded-lg hover:bg-cyan-400/10"
         >
-          <Download className="w-4 h-4 mr-2" />
+          <ExternalLink className="w-4 h-4 mr-2" />
           გახსნა / ჩამოტვირთვა
         </a>
       </div>
@@ -505,9 +661,19 @@ export function Education() {
   const { t } = useLanguage();
   const [selectedLanguage, setSelectedLanguage] = useState<'english' | 'russian' | 'georgian' | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [selectedFolder, setSelectedFolder] = useState<DocumentFolder | null>(null);
 
   const handleLanguageSelect = (language: 'english' | 'russian' | 'georgian') => {
     setSelectedLanguage(language);
+    setSelectedFolder(null); // Reset folder selection when changing language
+  };
+
+  const handleFolderClick = (folder: DocumentFolder) => {
+    setSelectedFolder(folder);
+  };
+
+  const handleBackToResources = () => {
+    setSelectedFolder(null);
   };
 
   return (
@@ -525,7 +691,7 @@ export function Education() {
           // Language Selection Screen
           <div className="max-w-2xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* English Selection */}
+              {/* Georgian Selection */}
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -580,8 +746,35 @@ export function Education() {
               </motion.button>
             </div>
           </div>
+        ) : selectedFolder ? (
+          // Folder Contents View
+          <div>
+            <div className="flex items-center justify-between mb-8">
+              <button
+                onClick={handleBackToResources}
+                className="flex items-center text-dark-100 hover:text-cyan-300 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                უკან დაბრუნება
+              </button>
+            </div>
+            
+            <div className="text-center mb-12">
+              <div className="flex items-center justify-center mb-4">
+                <Folder className="w-12 h-12 text-cyan-400 mr-4" />
+                <h2 className="text-3xl font-bold text-white">{selectedFolder.title}</h2>
+              </div>
+              <p className="text-xl text-dark-100">{selectedFolder.description}</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {selectedFolder.documents.map((document) => (
+                <DocumentCard key={document.id} document={document} />
+              ))}
+            </div>
+          </div>
         ) : (
-          // Video List Section
+          // Content List Section
           <div>
             <div className="flex items-center justify-between mb-8">
               <button
@@ -608,8 +801,12 @@ export function Education() {
 
               {selectedLanguage === 'georgian' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {georgianDocuments.map((document) => (
-                    <DocumentCard key={document.id} document={document} />
+                  {georgianEducationalResources.map((resource) => (
+                    <EducationalResourceCard 
+                      key={resource.id} 
+                      resource={resource} 
+                      onFolderClick={handleFolderClick}
+                    />
                   ))}
                 </div>
               ) : (
