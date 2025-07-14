@@ -1,11 +1,52 @@
 import { Attachment, FlowiseUpload, FlowiseUploadType, DEFAULT_FILE_CONFIG, FileValidationConfig } from '../types/chat';
 import { 
   extractTextFromPdf, 
-  isPdfFile, 
-  estimateTokenCount, 
-  truncateTextForTokenLimit,
   type PdfTextExtractionResult 
 } from './pdfTextExtractor';
+import { 
+  extractTextFromImage, 
+  isImageFile,
+  type ImageOcrResult 
+} from './imageOcrExtractor';
+
+export function isPdfFile(file: File): boolean {
+  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+}
+
+/**
+ * Get estimated token count for text (rough approximation)
+ * Useful for checking if text will fit within API limits
+ */
+export function estimateTokenCount(text: string): number {
+  // Rough approximation: 1 token ≈ 4 characters for most languages
+  // Georgian text might be slightly different, but this gives a good estimate
+  return Math.ceil(text.length / 4);
+}
+
+/**
+ * Truncate text to fit within token limits if needed
+ */
+export function truncateTextForTokenLimit(text: string, maxTokens: number = 25000): string {
+  const estimatedTokens = estimateTokenCount(text);
+
+  if (estimatedTokens <= maxTokens) {
+    return text;
+  }
+
+  // Calculate how much text to keep (leave some buffer)
+  const maxChars = Math.floor(maxTokens * 3.5); // Conservative estimate
+  const truncatedText = text.substring(0, maxChars);
+
+  console.log('✂️ Text truncated to fit token limits:', {
+    originalLength: text.length,
+    truncatedLength: truncatedText.length,
+    estimatedOriginalTokens: estimatedTokens,
+    maxTokens
+  });
+
+  return truncatedText + '\n\n[Text truncated to fit token limits...]';
+}
+
 
 /**
  * Convert a file to base64 data URL format
@@ -258,23 +299,72 @@ export async function processFileForUpload(
         if (onProgress) onProgress(attachment.progressInfo);
       }
     } 
-    // Handle images and other files with direct base64 conversion
+    // Handle images with OCR + compression, and other files with direct conversion
     else {
-      // Update progress for file conversion
-      attachment.progressInfo = {
-        stage: 'extracting',
-        stageDescription: 'Converting file...',
-        percentage: 50
-      };
-      if (onProgress) onProgress(attachment.progressInfo);
-      
-      // For images, check if compression is needed
-      if (file.type.startsWith('image/')) {
-        console.log('🖼️ Processing image file:', {
+      // For images, perform OCR text extraction first
+      if (isImageFile(file)) {
+        console.log('🖼️ Processing image file with OCR:', {
           fileName: file.name,
           originalSize: file.size,
           type: file.type
         });
+        
+        // Update progress for OCR analysis
+        attachment.progressInfo = {
+          stage: 'extracting',
+          stageDescription: 'Extracting text from image...',
+          percentage: 10
+        };
+        if (onProgress) onProgress(attachment.progressInfo);
+        
+        try {
+          // Extract text using OCR first
+          const ocrResult = await extractTextFromImage(file, (progressInfo) => {
+            // Forward progress updates from OCR extractor (10% to 70%)
+            const adjustedProgress = {
+              ...progressInfo,
+              percentage: 10 + (progressInfo.percentage * 0.6) // Scale 0-100% to 10-70%
+            };
+            attachment.progressInfo = adjustedProgress;
+            if (onProgress) onProgress(adjustedProgress);
+          });
+          
+          if (ocrResult.success && ocrResult.text.trim()) {
+            // Store extracted text
+            attachment.extractedText = ocrResult.text.trim();
+            
+            console.log('✅ Image OCR extraction successful:', {
+              fileName: file.name,
+              textLength: ocrResult.text.length,
+              confidence: Math.round(ocrResult.confidence || 0),
+              processingTimeSeconds: Math.round((ocrResult.processingTime || 0) / 1000)
+            });
+          } else {
+            // OCR completed but no text found or failed
+            const reason = ocrResult.error || 'No text content found in image';
+            console.log('ℹ️ Image OCR completed but no text extracted:', {
+              fileName: file.name,
+              reason,
+              success: ocrResult.success
+            });
+            attachment.extractedText = '';
+          }
+        } catch (ocrError) {
+          console.warn('⚠️ Image OCR extraction failed:', {
+            fileName: file.name,
+            error: ocrError,
+            message: ocrError instanceof Error ? ocrError.message : 'Unknown OCR error'
+          });
+          attachment.extractedText = '';
+        }
+        
+        // Now handle image compression (70% to 90%)
+        attachment.progressInfo = {
+          stage: 'extracting', 
+          stageDescription: 'Processing image file...',
+          percentage: 70
+        };
+        if (onProgress) onProgress(attachment.progressInfo);
         
         // If image is larger than 2MB, compress it
         if (file.size > 2 * 1024 * 1024) {
@@ -283,7 +373,7 @@ export async function processFileForUpload(
           attachment.progressInfo = {
             stage: 'extracting',
             stageDescription: 'Compressing large image...',
-            percentage: 75
+            percentage: 80
           };
           if (onProgress) onProgress(attachment.progressInfo);
           
@@ -302,25 +392,36 @@ export async function processFileForUpload(
           // Small image, use as-is
           attachment.base64Data = await convertFileToBase64(file);
         }
+        
       } else {
         // Non-image files, use direct conversion
+        attachment.progressInfo = {
+          stage: 'extracting',
+          stageDescription: 'Converting file...',
+          percentage: 50
+        };
+        if (onProgress) onProgress(attachment.progressInfo);
+        
         attachment.base64Data = await convertFileToBase64(file);
       }
       
       attachment.status = 'ready';
       
       // Complete progress
+      const hasExtractedText = attachment.extractedText && attachment.extractedText.length > 0;
       attachment.progressInfo = {
         stage: 'complete',
-        stageDescription: 'File ready',
+        stageDescription: hasExtractedText ? 'Text extracted and file ready' : 'File ready',
         percentage: 100
       };
       if (onProgress) onProgress(attachment.progressInfo);
       
-      console.log('✅ File converted successfully:', {
+      console.log('✅ File processing completed:', {
         fileName: file.name,
         fileType: file.type,
-        finalSize: attachment.base64Data.length
+        finalSize: attachment.base64Data.length,
+        hasExtractedText: hasExtractedText,
+        extractedTextLength: attachment.extractedText?.length || 0
       });
     }
 
@@ -406,8 +507,9 @@ async function compressImageIfNeeded(file: File, maxSizeKB: number = 500): Promi
 
 /**
  * Convert attachment to Flowise upload format
+ * Returns an array to support sending both text and file for images with OCR
  */
-export function convertAttachmentToFlowiseUpload(attachment: Attachment): FlowiseUpload {
+export function convertAttachmentToFlowiseUpload(attachment: Attachment): FlowiseUpload | FlowiseUpload[] {
   // For PDFs, ALWAYS send as text content (never as file upload)
   if (isPdfFile(attachment.file)) {
     if (attachment.extractedText) {
@@ -421,7 +523,7 @@ export function convertAttachmentToFlowiseUpload(attachment: Attachment): Flowis
       // Send extracted text directly, not as file upload
       return {
         data: attachment.extractedText,
-        type: 'text', // Send as text content, not file
+        type: 'text',
         name: `${attachment.file.name} (${attachment.extractedText.includes('(OCR)') ? 'OCR extracted text' : 'extracted text'})`,
         mime: 'text/plain'
       };
@@ -454,7 +556,32 @@ export function convertAttachmentToFlowiseUpload(attachment: Attachment): Flowis
     }
   }
   
-  // For images and other files, use direct file upload approach
+  // For images with extracted text, send BOTH text and image
+  if (isImageFile(attachment.file) && attachment.extractedText && attachment.extractedText.trim()) {
+    console.log('🖼️ Converting image with extracted text to Flowise format:', {
+      fileName: attachment.file.name,
+      textLength: attachment.extractedText.length,
+      imageSize: attachment.base64Data.length
+    });
+    
+    const textUpload: FlowiseUpload = {
+      data: attachment.extractedText,
+      type: 'text',
+      name: `${attachment.file.name} (extracted text)`,
+      mime: 'text/plain'
+    };
+    
+    const imageUpload: FlowiseUpload = {
+      data: attachment.base64Data,
+      type: 'file',
+      name: attachment.file.name,
+      mime: attachment.file.type || 'application/octet-stream'
+    };
+    
+    return [textUpload, imageUpload];
+  }
+  
+  // For images without text and other files, use direct file upload approach
   const base64Data = attachment.base64Data; // Keep the full data URL
   
   // For Flowise API:
@@ -476,6 +603,7 @@ export function convertAttachmentToFlowiseUpload(attachment: Attachment): Flowis
     flowiseType: flowiseType,
     originalDataLength: attachment.base64Data.length,
     hasDataPrefix: attachment.base64Data.includes('data:'),
+    hasExtractedText: !!attachment.extractedText,
     preview: `${attachment.file.name} (${attachment.file.type})`
   });
   
@@ -509,4 +637,4 @@ export function cleanupAttachment(attachment: Attachment): void {
  */
 export function cleanupAttachments(attachments: Attachment[]): void {
   attachments.forEach(cleanupAttachment);
-} 
+}

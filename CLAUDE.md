@@ -12,7 +12,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Database Operations
 - `npx supabase db push` - Push local migrations to Supabase
-- Check `supabase/migrations/` for database schema history
+- Check `supabase/migrations/` for database schema history (20+ migrations showing iterative development)
+
+### Testing and Validation
+- No formal test suite configured - test manually with various file types
+- Verify OCR functionality with image-based PDFs
+- Test multi-language text extraction (Georgian/Russian)
 
 ## Architecture Overview
 
@@ -97,13 +102,18 @@ VITE_FLOWISE_API_URL=your_flowise_api_url
 - Visual development tool integration with medical-specific context
 - Component detection for React components and medical forms
 - Screenshot capabilities with high-resolution output
+- Configuration in `stagewise.config.js` with custom selectors for medical forms
 
 ## File Structure Notes
 
 **Critical Processing Files**:
 - `src/utils/pdfTextExtractor.ts` - PDF text extraction with OCR fallback
-- `src/utils/ocrExtractor.ts` - Tesseract.js OCR implementation
+- `src/utils/ocrExtractor.ts` - Tesseract.js OCR implementation  
+- `src/utils/imageOcrExtractor.ts` - Image-specific OCR processing
 - `src/utils/fileUpload.ts` - Unified file processing pipeline
+- `src/utils/georgianEncodingMaps.ts` - Character encoding fixes for Georgian text
+- `src/utils/unicodeGeorgianNormalizer.ts` - Unicode normalization utilities
+- `src/utils/pdfFontAnalyzer.ts` - Font analysis for text extraction optimization
 
 **Type Definitions**:
 - `src/types/chat.ts` - Core chat and file upload types
@@ -112,6 +122,12 @@ VITE_FLOWISE_API_URL=your_flowise_api_url
 **API Layer**:
 - `src/lib/api/chat.ts` - Flowise API integration
 - `src/lib/supabase.ts` - Supabase client configuration
+
+**Configuration Files**:
+- `vite.config.ts` - Custom PDF.js worker setup, Flowise proxy configuration
+- `stagewise.config.js` - Development tool configuration with medical context
+- `tailwind.config.js` - Custom dark theme and neon styling
+- `tsconfig.*.json` - TypeScript configurations for different environments
 
 ## Development Workflow
 
@@ -126,3 +142,22 @@ When modifying chat functionality:
 2. Verify attachment processing across file types
 3. Check session persistence and recovery
 4. Test API error scenarios and user feedback
+
+## Important Development Notes
+
+### Character Encoding Complexity
+This codebase handles advanced character encoding scenarios, especially for Georgian and Russian text:
+- Georgian text often requires Unicode normalization to display correctly
+- Custom encoding maps handle font-specific character mappings in PDFs
+- OCR results may need post-processing for multi-language documents
+
+### PDF Processing Optimization
+The system is optimized for medical document processing:
+- Client-side processing reduces server load and improves performance
+- Token usage optimization (95%+ reduction) crucial for AI API costs
+- Font analysis helps determine best extraction approach for each PDF
+
+### Proxy Configuration for Development
+- Vite proxy handles CORS issues with Flowise API during development
+- Production deployment requires direct API configuration
+- PDF.js worker must be properly copied during build process

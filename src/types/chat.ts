@@ -7,10 +7,11 @@ export interface Attachment {
   status: 'processing' | 'ready' | 'error';
   preview?: string;
   error?: string;
-  // PDF-specific fields
+  // Text extraction fields (for both PDFs and images)
   extractedText?: string;
   pdfPageCount?: number;
   extractionError?: string;
+  ocrConfidence?: number; // OCR confidence score (0-100)
   // Enhanced progress tracking
   progressInfo?: {
     stage: 'analyzing' | 'extracting' | 'ocr' | 'complete';
@@ -19,7 +20,8 @@ export interface Attachment {
     estimatedTimeRemaining?: string;
     currentPage?: number;
     totalPages?: number;
-    method?: 'standard' | 'ocr';
+    timeEstimate?: number;
+    method?: 'standard' | 'ocr' | 'google-vision';
   };
 }
 
@@ -77,5 +79,5 @@ export const DEFAULT_FILE_CONFIG: FileValidationConfig = {
     'image/webp',
     'application/pdf'
   ],
-  maxFiles: 15
+  maxFiles: 30
 }; 

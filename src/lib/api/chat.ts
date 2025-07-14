@@ -18,11 +18,16 @@ export interface ChatApiError {
 
 /**
  * Convert attachments to Flowise upload format
+ * Handles both single uploads and arrays (for images with text + file)
  */
 export function convertAttachmentsToUploads(attachments: Attachment[]): FlowiseUpload[] {
   return attachments
     .filter(attachment => attachment.status === 'ready')
-    .map(convertAttachmentToFlowiseUpload);
+    .flatMap(attachment => {
+      const result = convertAttachmentToFlowiseUpload(attachment);
+      // Handle both single upload and array of uploads (for images with OCR text)
+      return Array.isArray(result) ? result : [result];
+    });
 }
 
 /**

@@ -8,13 +8,13 @@ import { VoiceRecorder } from '../components/VoiceRecorder';
 // Import the enhanced file processing system
 import { 
   processFileForUpload, 
-  convertAttachmentToFlowiseUpload, 
   validateMultipleFiles,
   cleanupAttachments
 } from '../utils/fileUpload';
 import { Attachment, DEFAULT_FILE_CONFIG } from '../types/chat';
+import { fetchAIResponse } from '../lib/api/chat';
 
-const API_URL = "https://flowise-2-0.onrender.com/api/v1/prediction/b4fd6d68-19cd-4449-8be8-1f80c2d791bf";
+// Now using the same centralized fetchAIResponse function as ChatBot
 
 export function AskDoctor() {
   const { t } = useLanguage();
@@ -169,69 +169,22 @@ export function AskDoctor() {
     setError(null);
     setIsSubmitting(true);
 
-    // Get AI response first using enhanced file processing
+    // Get AI response using the same proven function that ChatBot uses
     let aiResponse = null;
     try {
-      // Convert attachments to Flowise format using the enhanced system
-      const uploads = attachments
-        .filter(att => att.status === 'ready')
-        .map(convertAttachmentToFlowiseUpload);
-
-      // Separate text content from file uploads (like ChatBot implementation)
-      const textContent: string[] = [];
-      const fileUploads: any[] = [];
+      // Generate consistent session ID for this request
+      const sessionId = `askdoctor-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
       
-      uploads.forEach(upload => {
-        if (upload.type === 'text') {
-          textContent.push(`\n\n--- Content from ${upload.name} ---\n${upload.data}`);
-        } else {
-          fileUploads.push(upload);
-        }
-      });
-      
-      // Create final question with extracted text content appended (like ChatBot)
-      let finalQuestion = question;
-      if (textContent.length > 0) {
-        finalQuestion = question + textContent.join('');
-        console.log('📝 Added extracted text content to question:', {
-          originalQuestionLength: question.length,
-          textContentCount: textContent.length,
-          finalQuestionLength: finalQuestion.length
-        });
-      }
-
-      console.log('🔄 Sending to Flowise API:', {
-        question: finalQuestion.substring(0, 100) + '...',
-        originalQuestionLength: question.length,
-        finalQuestionLength: finalQuestion.length,
-        textContentCount: textContent.length,
-        fileUploadCount: fileUploads.length,
-        totalAttachments: attachments.length
+      console.log('🔄 Using fetchAIResponse (same as ChatBot):', {
+        question: question.substring(0, 100) + '...',
+        sessionId,
+        attachmentCount: attachments.length,
+        readyAttachments: attachments.filter(a => a.status === 'ready').length
       });
 
-      const requestBody: any = {
-        question: finalQuestion  // Use the enhanced question with text content
-      };
-
-      // Add file uploads if there are any (images, audio, etc.)
-      if (fileUploads.length > 0) {
-        requestBody.uploads = fileUploads;
-        console.log('📁 Added file uploads to request:', {
-          fileUploadCount: fileUploads.length,
-          uploadTypes: fileUploads.map(u => u.type)
-        });
-      }
-
-      const aiResult = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-      
-      const aiData = await aiResult.json();
-      aiResponse = aiData.text;
+      // Use the exact same API function that ChatBot uses
+      const response = await fetchAIResponse(question, sessionId, attachments);
+      aiResponse = response.text;
       
       console.log('✅ AI response received:', {
         hasResponse: !!aiResponse,
